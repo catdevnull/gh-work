@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -e
+
+ROADMAP_URL=https://github.com/buttondown/roadmap
+if [ $# -eq 0 ]; then
+    if type -p pbpaste >/dev/null; then
+        echo "Trying to read issue number from clipboard"
+        ISSUE_NUMBER=$(echo "$(pbpaste)" | grep -o 'issues/[0-9]*' | grep -o '[0-9]*')
+    elif type -p xclip >/dev/null; then
+        # TODO: also try wl-clipboard on Linux
+        echo "Trying to read issue number from clipboard"
+        ISSUE_NUMBER=$(echo "$(xclip -selection clipboard -o)" | grep -o 'issues/[0-9]*' | grep -o '[0-9]*')
+    fi
+else
+    ISSUE_NUMBER=$1
+fi
+
+if [ -z "$ISSUE_NUMBER" ]; then
+    echo "Usage: $0 <issue-number>"
+    exit 1
+fi
+
+run_cmd() {
+    echo " --> $@" >&2
+    "$@"
+}
+
+
+echo "Issue number: $ISSUE_NUMBER"
+
+ISSUE_URL="$ROADMAP_URL/issues/$ISSUE_NUMBER"
+ISSUE_TITLE=$(gh issue view "$ISSUE_URL" --json title --jq .title)
+BRANCH_NAME="roadmap-$ISSUE_NUMBER"
+run_cmd git checkout -b $BRANCH_NAME origin/main
+run_cmd git commit --allow-empty -m "Initial commit for issue #$ISSUE_NUMBER"
+PR_URL=$(run_cmd gh pr create --title "$ISSUE_TITLE" --body "fixes $ISSUE_URL" --draft)
+run_cmd gh pr edit $PR_URL --title "$ISSUE_TITLE"
+
+echo "PR created and linked to issue #$ISSUE_NUMBER: $PR_URL"
