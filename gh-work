@@ -33,6 +33,7 @@ ISSUE_TITLE=$(gh issue view "$ISSUE_URL" --json title --jq .title)
 BRANCH_NAME="roadmap-$ISSUE_NUMBER"
 run_cmd git checkout -b $BRANCH_NAME origin/main
 run_cmd git commit --allow-empty -m "Initial commit for issue #$ISSUE_NUMBER"
+run_cmd git push -u origin $BRANCH_NAME
 PR_URL=$(run_cmd gh pr create --title "$ISSUE_TITLE" --body "fixes $ISSUE_URL" --draft)
 run_cmd gh pr edit $PR_URL --title "$ISSUE_TITLE"
 
