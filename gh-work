@@ -23,6 +23,7 @@ fi
 run_cmd() {
     echo " --> $@" >&2
     "$@"
+    return $?
 }
 
 
@@ -31,10 +32,22 @@ echo "Issue number: $ISSUE_NUMBER"
 ISSUE_URL="$ROADMAP_URL/issues/$ISSUE_NUMBER"
 ISSUE_TITLE=$(gh issue view "$ISSUE_URL" --json title --jq .title)
 BRANCH_NAME="roadmap-$ISSUE_NUMBER"
-run_cmd git checkout -b $BRANCH_NAME origin/main
-run_cmd git commit --allow-empty -m "Initial commit for issue #$ISSUE_NUMBER"
+if ! run_cmd git checkout -b $BRANCH_NAME origin/main; then
+    echo "Branch $BRANCH_NAME already exists. Switching to it."
+    run_cmd git checkout $BRANCH_NAME
+else
+    # Only commit if the branch was successfully created (i.e., it's a new branch)
+    run_cmd git commit --allow-empty -m "Initial commit for issue #$ISSUE_NUMBER"
+fi
 run_cmd git push -u origin $BRANCH_NAME
-PR_URL=$(run_cmd gh pr create --title "$ISSUE_TITLE" --body "fixes $ISSUE_URL" --draft)
-run_cmd gh pr edit $PR_URL --title "$ISSUE_TITLE"
 
-echo "PR created and linked to issue #$ISSUE_NUMBER: $PR_URL"
+# Check if PR already exists
+PR_URL=$(gh pr view $BRANCH_NAME --json url --jq .url 2>/dev/null)
+
+if [ -z "$PR_URL" ]; then
+    # PR doesn't exist, create it
+    PR_URL=$(run_cmd gh pr create --title "$ISSUE_TITLE" --body "fixes $ISSUE_URL" --draft)
+    echo "PR created and linked to issue #$ISSUE_NUMBER: $PR_URL"
+else
+    echo "PR already exists for issue #$ISSUE_NUMBER: $PR_URL"
+fi
