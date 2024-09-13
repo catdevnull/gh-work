@@ -42,7 +42,7 @@ fi
 run_cmd git push -u origin $BRANCH_NAME
 
 # Check if PR already exists
-PR_URL=$(gh pr view $BRANCH_NAME --json url --jq .url 2>/dev/null)
+PR_URL=$(gh pr view $BRANCH_NAME --json url --jq .url 2>/dev/null || echo "")
 
 if [ -z "$PR_URL" ]; then
     # PR doesn't exist, create it
